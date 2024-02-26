@@ -26,12 +26,24 @@ OptionParser.new do |parser|
     options[:threads] = threads
   end
 
+  parser.on("-uUSERNAME", "--username=USERNAME", String, "Authenticate user") do |user|
+    options[:username] = user
+  end
+
+  parser.on("-pPASSWORD", "--password=PASSWORD", String, "Authenticate password") do |pwd|
+    options[:password] = pwd
+  end
+
   parser.on('-h', '--help', 'Prints this help.') do
     puts parser
     exit
   end
 end.parse!
 
+options[:bind_port] ||= ENV['PORT'] || 9292
+options[:username] ||= ENV['USERNAME']
+options[:password] ||= ENV['PASSWORD']
+
 require_relative '../lib/forward_proxy'
-server = ForwardProxy::Server.new(options)
+server = ForwardProxy::Server.new(**options)
 server.start

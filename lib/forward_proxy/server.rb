@@ -12,14 +12,16 @@ require 'forward_proxy/thread_pool'
 
 module ForwardProxy
   class Server
-    attr_reader :bind_address, :bind_port, :logger, :timeout
+    attr_reader :bind_address, :bind_port, :logger, :timeout, :username, :password
 
-    def initialize(bind_address: '127.0.0.1', bind_port: 9292, threads: 128, timeout: 300, logger: default_logger)
+    def initialize(bind_address: '127.0.0.1', bind_port: 9292, threads: 128, timeout: 300, logger: default_logger, username: nil, password: nil)
       @bind_address = bind_address
       @bind_port = bind_port
       @logger = logger
       @thread_pool = ThreadPool.new(threads)
       @timeout = timeout
+      @username = username
+      @password = password
     end
 
     def start
@@ -33,6 +35,7 @@ module ForwardProxy
         thread_pool.schedule(socket.accept) do |client_conn|
           handle_timeout do
             req = parse_req(client_conn)
+            authenticate(req)
 
             logger.info(req.request_line.strip)
 
@@ -195,6 +198,7 @@ module ForwardProxy
       status_code = case err
                     when Errors::ConnectionTimeoutError then 504
                     when Errors::HTTPMethodNotImplemented then 501
+                    when WEBrick::HTTPStatus::ProxyAuthenticationRequired then 401
                     else
                       502
                     end
@@ -245,6 +249,14 @@ module ForwardProxy
       end
     rescue StandardError => e
       throw Errors::HTTPParseError.new(e.message)
+    end
+
+    def authenticate(req)
+      return unless username && password
+
+      WEBrick::HTTPAuth.proxy_basic_auth(req, {}, nil) do |req_username, req_password|
+        req_username == username && req_password == password
+      end
     end
   end
 end

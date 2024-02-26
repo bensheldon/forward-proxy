@@ -11,3 +11,5 @@ gem 'rake', '~> 12.0'
 gem 'simplecov', '~> 0.17'
 gem 'rubocop', '~> 1.20'
 gem 'yard', '~> 0.9'
+
+gem "webrick", "~> 1.8"
